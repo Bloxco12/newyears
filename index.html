@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>New Year Countdown</title>
+<style>
+  body {
+    margin: 0;
+    background: radial-gradient(circle at bottom, #020617, #000);
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  .container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  h1 {
+    margin-bottom: 30px;
+    font-size: 2.5rem;
+  }
+
+  .countdown {
+    display: flex;
+    gap: 20px;
+  }
+
+  .unit {
+    text-align: center;
+  }
+
+  .flip {
+    position: relative;
+    width: 90px;
+    height: 110px;
+    perspective: 600px;
+  }
+
+  .card {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: #020617;
+    border-radius: 10px;
+    font-size: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backface-visibility: hidden;
+    box-shadow: 0 10px 20px rgba(0,0,0,.5);
+  }
+
+  .card.top {
+    transform-origin: bottom;
+  }
+
+  .card.bottom {
+    transform: rotateX(180deg);
+    transform-origin: top;
+  }
+
+  .flip.animate .top {
+    animation: flipTop 0.6s ease-in-out;
+  }
+
+  .flip.animate .bottom {
+    animation: flipBottom 0.6s ease-in-out;
+  }
+
+  @keyframes flipTop {
+    0% { transform: rotateX(0); }
+    100% { transform: rotateX(-90deg); }
+  }
+
+  @keyframes flipBottom {
+    0% { transform: rotateX(90deg); }
+    100% { transform: rotateX(0); }
+  }
+
+  .label {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    opacity: 0.7;
+  }
+
+  canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="fireworks"></canvas>
+
+<div class="container">
+  <h1>🎆 Countdown to New Year 🎆</h1>
+
+  <div class="countdown">
+    <div class="unit"><div class="flip" id="days"></div><div class="label">Days</div></div>
+    <div class="unit"><div class="flip" id="hours"></div><div class="label">Hours</div></div>
+    <div class="unit"><div class="flip" id="minutes"></div><div class="label">Minutes</div></div>
+    <div class="unit"><div class="flip" id="seconds"></div><div class="label">Seconds</div></div>
+  </div>
+</div>
+
+<script>
+  const units = ["days", "hours", "minutes", "seconds"];
+  const values = {};
+
+  units.forEach(u => values[u] = null);
+
+  function createFlip(el, value) {
+    el.innerHTML = `
+      <div class="card top">${value}</div>
+      <div class="card bottom">${value}</div>
+    `;
+  }
+
+  function updateFlip(el, value) {
+    if (values[el.id] === value) return;
+    values[el.id] = value;
+
+    el.classList.remove("animate");
+    createFlip(el, value);
+    void el.offsetWidth;
+    el.classList.add("animate");
+  }
+
+  function updateCountdown() {
+    const now = new Date();
+    const newYear = new Date(now.getFullYear() + 1, 0, 1);
+    const diff = newYear - now;
+
+    if (diff <= 0) {
+      startFireworks();
+      return;
+    }
+
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor(diff / 3600000) % 24;
+    const m = Math.floor(diff / 60000) % 60;
+    const s = Math.floor(diff / 1000) % 60;
+
+    updateFlip(days, d);
+    updateFlip(hours, h);
+    updateFlip(minutes, m);
+    updateFlip(seconds, s);
+  }
+
+  units.forEach(u => createFlip(document.getElementById(u), "--"));
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
+
+  // 🎆 Fireworks
+  const canvas = document.getElementById("fireworks");
+  const ctx = canvas.getContext("2d");
+  resize();
+
+  window.addEventListener("resize", resize);
+
+  function resize() {
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+  }
+
+  let particles = [];
+
+  function explode(x, y) {
+    for (let i = 0; i < 80; i++) {
+      particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.5) * 8,
+        life: 100,
+        color: `hsl(${Math.random() * 360}, 100%, 60%)`
+      });
+    }
+  }
+
+  function startFireworks() {
+    setInterval(() => {
+      explode(Math.random() * canvas.width, Math.random() * canvas.height * 0.6);
+    }, 600);
+  }
+
+  function animate() {
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    particles.forEach((p, i) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life--;
+
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 3, 3);
+
+      if (p.life <= 0) particles.splice(i, 1);
+    });
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+
+</body>
+</html>
