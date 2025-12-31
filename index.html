@@ -4,12 +4,38 @@
 <meta charset="UTF-8">
 <title>New Year Countdown</title>
 <style>
+  * { box-sizing: border-box; }
   body {
     margin: 0;
     background: radial-gradient(circle at bottom, #020617, #000);
+    font-family: "Inter", system-ui, sans-serif;
     color: white;
-    font-family: Arial, sans-serif;
     overflow: hidden;
+  }
+
+  /* 🌌 Starfield */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(1px 1px at 20% 30%, #fff, transparent),
+      radial-gradient(1px 1px at 80% 40%, #fff, transparent),
+      radial-gradient(1px 1px at 50% 80%, #fff, transparent),
+      radial-gradient(1px 1px at 70% 20%, #fff, transparent);
+    opacity: .4;
+    animation: stars 60s linear infinite;
+  }
+
+  @keyframes stars {
+    from { transform: translateY(0); }
+    to { transform: translateY(-2000px); }
+  }
+
+  canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
   }
 
   .container {
@@ -18,16 +44,19 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    backdrop-filter: blur(12px);
   }
 
   h1 {
-    margin-bottom: 30px;
-    font-size: 2.5rem;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    margin-bottom: 40px;
+    text-shadow: 0 0 20px #38bdf8;
   }
 
+  /* 🔮 Countdown */
   .countdown {
     display: flex;
-    gap: 20px;
+    gap: clamp(15px, 3vw, 30px);
   }
 
   .unit {
@@ -35,41 +64,42 @@
   }
 
   .flip {
-    position: relative;
-    width: 90px;
-    height: 110px;
-    perspective: 600px;
+    width: clamp(90px, 12vw, 140px);
+    height: clamp(120px, 16vw, 180px);
+    perspective: 1200px;
   }
 
   .card {
     position: absolute;
     width: 100%;
     height: 100%;
-    background: #020617;
-    border-radius: 10px;
-    font-size: 3rem;
+    border-radius: 20px;
+    background: linear-gradient(145deg, #020617, #020617cc);
+    border: 1px solid #38bdf855;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: clamp(3rem, 6vw, 5rem);
+    font-weight: 800;
+    color: #e0f2fe;
+    box-shadow:
+      0 0 30px #38bdf855,
+      inset 0 0 30px #0ea5e955;
     backface-visibility: hidden;
-    box-shadow: 0 10px 20px rgba(0,0,0,.5);
   }
 
-  .card.top {
-    transform-origin: bottom;
-  }
-
-  .card.bottom {
+  .top { transform-origin: bottom; }
+  .bottom {
     transform: rotateX(180deg);
     transform-origin: top;
   }
 
   .flip.animate .top {
-    animation: flipTop 0.6s ease-in-out;
+    animation: flipTop .8s cubic-bezier(.4,0,.2,1);
   }
 
   .flip.animate .bottom {
-    animation: flipBottom 0.6s ease-in-out;
+    animation: flipBottom .8s cubic-bezier(.4,0,.2,1);
   }
 
   @keyframes flipTop {
@@ -83,24 +113,20 @@
   }
 
   .label {
-    margin-top: 10px;
-    font-size: 0.9rem;
-    opacity: 0.7;
-  }
-
-  canvas {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
+    margin-top: 15px;
+    font-size: .9rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: .7;
   }
 </style>
 </head>
 <body>
 
-<canvas id="fireworks"></canvas>
+<canvas id="fx"></canvas>
 
 <div class="container">
-  <h1>🎆 Countdown to New Year 🎆</h1>
+  <h1>✨ New Year Countdown ✨</h1>
 
   <div class="countdown">
     <div class="unit"><div class="flip" id="days"></div><div class="label">Days</div></div>
@@ -111,103 +137,84 @@
 </div>
 
 <script>
-  const units = ["days", "hours", "minutes", "seconds"];
-  const values = {};
+  const ids = ["days","hours","minutes","seconds"];
+  const last = {};
 
-  units.forEach(u => values[u] = null);
-
-  function createFlip(el, value) {
+  function render(el, v) {
     el.innerHTML = `
-      <div class="card top">${value}</div>
-      <div class="card bottom">${value}</div>
+      <div class="card top">${v}</div>
+      <div class="card bottom">${v}</div>
     `;
   }
 
-  function updateFlip(el, value) {
-    if (values[el.id] === value) return;
-    values[el.id] = value;
-
+  function flip(el, v) {
+    if (last[el.id] === v) return;
+    last[el.id] = v;
     el.classList.remove("animate");
-    createFlip(el, value);
+    render(el, v);
     void el.offsetWidth;
     el.classList.add("animate");
   }
 
-  function updateCountdown() {
+  ids.forEach(id => render(document.getElementById(id), "--"));
+
+  function tick() {
     const now = new Date();
-    const newYear = new Date(now.getFullYear() + 1, 0, 1);
-    const diff = newYear - now;
+    const target = new Date(now.getFullYear() + 1, 0, 1);
+    const d = target - now;
 
-    if (diff <= 0) {
-      startFireworks();
-      return;
-    }
+    if (d <= 0) return startFireworks();
 
-    const d = Math.floor(diff / 86400000);
-    const h = Math.floor(diff / 3600000) % 24;
-    const m = Math.floor(diff / 60000) % 60;
-    const s = Math.floor(diff / 1000) % 60;
-
-    updateFlip(days, d);
-    updateFlip(hours, h);
-    updateFlip(minutes, m);
-    updateFlip(seconds, s);
+    flip(days, Math.floor(d / 86400000));
+    flip(hours, Math.floor(d / 3600000) % 24);
+    flip(minutes, Math.floor(d / 60000) % 60);
+    flip(seconds, Math.floor(d / 1000) % 60);
   }
 
-  units.forEach(u => createFlip(document.getElementById(u), "--"));
-  setInterval(updateCountdown, 1000);
-  updateCountdown();
+  setInterval(tick, 1000);
+  tick();
 
-  // 🎆 Fireworks
-  const canvas = document.getElementById("fireworks");
-  const ctx = canvas.getContext("2d");
-  resize();
-
-  window.addEventListener("resize", resize);
+  /* 🎆 Fireworks */
+  const c = fx, ctx = c.getContext("2d");
+  resize(); addEventListener("resize", resize);
+  let p = [];
 
   function resize() {
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+    c.width = innerWidth;
+    c.height = innerHeight;
   }
 
-  let particles = [];
-
-  function explode(x, y) {
-    for (let i = 0; i < 80; i++) {
-      particles.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 8,
-        vy: (Math.random() - 0.5) * 8,
-        life: 100,
-        color: `hsl(${Math.random() * 360}, 100%, 60%)`
+  function boom(x,y) {
+    for (let i=0;i<120;i++) {
+      p.push({
+        x,y,
+        vx:(Math.random()-.5)*10,
+        vy:(Math.random()-.5)*10,
+        life:120,
+        h:Math.random()*360
       });
     }
   }
 
   function startFireworks() {
-    setInterval(() => {
-      explode(Math.random() * canvas.width, Math.random() * canvas.height * 0.6);
-    }, 600);
+    setInterval(() => boom(Math.random()*c.width, Math.random()*c.height*.6), 500);
   }
 
   function animate() {
-    ctx.fillStyle = "rgba(0,0,0,0.2)";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "rgba(0,0,0,.15)";
+    ctx.fillRect(0,0,c.width,c.height);
 
-    particles.forEach((p, i) => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life--;
-
-      ctx.fillStyle = p.color;
-      ctx.fillRect(p.x, p.y, 3, 3);
-
-      if (p.life <= 0) particles.splice(i, 1);
+    p.forEach((o,i)=>{
+      o.x+=o.vx; o.y+=o.vy; o.life--;
+      ctx.fillStyle = `hsla(${o.h},100%,60%,${o.life/120})`;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.fillRect(o.x,o.y,3,3);
+      if(o.life<=0) p.splice(i,1);
     });
 
     requestAnimationFrame(animate);
   }
-
   animate();
 </script>
 
